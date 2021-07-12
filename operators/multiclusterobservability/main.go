@@ -45,8 +45,8 @@ import (
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	observabilityv1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	observabilityv1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	mcoctrl "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/controllers/multiclusterobservability"
@@ -121,16 +121,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	placementRuleCrdExists, err := util.CheckCRDExist(crdClient, config.PlacementRuleCrdName)
-	if err != nil {
+	if err := clusterv1.AddToScheme(scheme); err != nil {
 		setupLog.Error(err, "")
 		os.Exit(1)
-	}
-	if placementRuleCrdExists {
-		if err := placementv1.AddToScheme(scheme); err != nil {
-			setupLog.Error(err, "")
-			os.Exit(1)
-		}
 	}
 
 	mchCrdExists, err := util.CheckCRDExist(crdClient, config.MCHCrdName)
@@ -181,15 +174,10 @@ func main() {
 		workv1.SchemeGroupVersion.WithKind("ManifestWork"): []filteredcache.Selector{
 			{LabelSelector: "owner==multicluster-observability-operator"},
 		},
+		clusterv1.SchemeGroupVersion.WithKind("ManagedCluster"): []filteredcache.Selector{},
 		operatorv1.SchemeGroupVersion.WithKind("IngressController"): []filteredcache.Selector{
 			{FieldSelector: fmt.Sprintf("metadata.namespace==%s,metadata.name==%s", config.OpenshiftIngressOperatorNamespace, config.OpenshiftIngressOperatorCRName)},
 		},
-	}
-
-	if placementRuleCrdExists {
-		gvkLabelsMap[placementv1.SchemeGroupVersion.WithKind("PlacementRule")] = []filteredcache.Selector{
-			{FieldSelector: fmt.Sprintf("metadata.namespace==%s", config.GetDefaultNamespace())},
-		}
 	}
 
 	if mchCrdExists {
@@ -224,7 +212,6 @@ func main() {
 
 	crdMaps := map[string]bool{
 		config.MCHCrdName:                     mchCrdExists,
-		config.PlacementRuleCrdName:           placementRuleCrdExists,
 		config.StorageVersionMigrationCrdName: svmCrdExists,
 	}
 

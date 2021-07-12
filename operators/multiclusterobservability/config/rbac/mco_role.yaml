@@ -167,16 +167,16 @@ rules:
   - watch
   - create
 - apiGroups:
-  - apps.open-cluster-management.io
+  - cluster.open-cluster-management.io
   resources:
-  - '*'
-  - placementrules
+  - manageclusters
   verbs:
-  - '*'
+  - 'get'
+  - 'list'
+  - 'watch'
 - apiGroups:
   - work.open-cluster-management.io
   resources:
-  - '*'
   - manifestworks
   verbs:
   - '*'

@@ -151,34 +151,6 @@ func installMCO() {
 		return nil
 	}, EventuallyTimeoutMinute*25, EventuallyIntervalSecond*10).Should(Succeed())
 
-	By("Checking placementrule CR is created")
-	Eventually(func() error {
-		_, err := dynClient.Resource(utils.NewOCMPlacementRuleGVR()).Namespace(utils.MCO_NAMESPACE).Get(context.TODO(), "observability", metav1.GetOptions{})
-		if err != nil {
-			testFailed = true
-			return err
-		}
-		testFailed = false
-		return nil
-	}, EventuallyTimeoutMinute*10, EventuallyIntervalSecond*5).Should(Succeed())
-
-	if os.Getenv("IS_CANARY_ENV") != "true" {
-		// TODO(morvencao): remove the patch from placement is implemented by server foundation.
-		By("Patching the placementrule CR's status")
-		token, err := utils.FetchBearerToken(testOptions)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(func() error {
-			err = utils.PatchPlacementRule(testOptions, token)
-			if err != nil {
-				testFailed = true
-				return err
-			}
-			testFailed = false
-			return nil
-		}).Should(Succeed())
-
-	}
-
 	By("Check endpoint-operator and metrics-collector pods are created")
 	Eventually(func() error {
 		err = utils.CheckMCOAddon(testOptions)

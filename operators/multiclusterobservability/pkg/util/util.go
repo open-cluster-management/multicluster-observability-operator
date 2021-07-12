@@ -99,3 +99,19 @@ func ProxyEnvVarsAreSet() bool {
 	}
 	return false
 }
+
+func RemoveDuplicates(elements []string) []string {
+	// Use map to record duplicates as we find them.
+	encountered := map[string]struct{}{}
+	result := []string{}
+
+	for _, v := range elements {
+		if _, found := encountered[v]; found {
+			continue
+		}
+		encountered[v] = struct{}{}
+		result = append(result, v)
+	}
+	// Return the new slice.
+	return result
+}

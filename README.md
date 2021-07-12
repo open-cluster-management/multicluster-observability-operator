@@ -2,7 +2,7 @@
 
 [![Build](https://img.shields.io/badge/build-Prow-informational)](https://prow.ci.openshift.org/?repo=open-cluster-management%2F${multicluster-observability-operator})
 
-This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/open-cluster-management/registration-operator), [Klusterlet](https://github.com/open-cluster-management/registration-operator), [multicloud operators placementrule](https://github.com/open-cluster-management/multicloud-operators-placementrule). The multicluster-observability operator is the root operator which pulls in all things needed.
+This document attempts to explain how the different components in Open Cluster Management Observabilty come together to deliver multicluster fleet observability. We do leverage several open source projects: [Grafana](https://github.com/grafana/grafana), [Alertmanager](https://github.com/prometheus/alertmanager), [Thanos](https://github.com/thanos-io/thanos/), [Observatorium Operator and API Gateway](https://github.com/observatorium), [Prometheus](https://github.com/prometheus/prometheus); We also leverage a few [Open Cluster Mangement projects](https://open-cluster-management.io/) namely - [Cluster Manager or Registration Operator](https://github.com/open-cluster-management/registration-operator), [Klusterlet](https://github.com/open-cluster-management/registration-operator). The multicluster-observability operator is the root operator which pulls in all things needed.
 
 ## Conceptual Diagram
 
@@ -53,7 +53,7 @@ $ cd multicluster-observability-operator
 Build the multicluster-observability-operator image and push it to a public registry, such as quay.io:
 
 ```
-$ make -f Makefile.prow docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
+$ make docker-build docker-push IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
 ### Run the Operator in the Cluster
@@ -65,13 +65,12 @@ $ kubectl create ns open-cluster-management-observability
 
 2. Deploy the minio service which acts as storage service of the multicluster observability:
 ```
-$ git clone --depth 1 git@github.com:open-cluster-management/observability-e2e-test.git
-$ kubectl -n open-cluster-management-observability apply -f observability-e2e-test/cicd-scripts/e2e-setup-manifests/minio
+$ kubectl -n open-cluster-management-observability apply -f examples/minio
 ```
 
 3. Replace the operator image and deploy the multicluster-observability-operator:
 ```
-$ make -f Makefile.prow deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
+$ make deploy IMG=quay.io/<YOUR_USERNAME_IN_QUAY>/multicluster-observability-operator:latest
 ```
 
 4. Deploy the multicluster-observability-operator CR:
@@ -110,7 +109,7 @@ $ kubectl -n open-cluster-management-observability delete -f config/samples/obse
 2. Delete the multicluster-observability-operator:
 
 ```
-$ make -f Makefile.prow undeploy
+$ make undeploy
 ```
 
 3. Delete the minio service:

@@ -118,7 +118,7 @@ func installMCO() {
 			}
 			testFailed = false
 			return nil
-		}).Should(Succeed())
+		}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 
 		By("Check the api conversion is working as expected")
 		v1beta1Tov1beta2GoldenPath := "../../../examples/mco/e2e/v1beta1/observability-v1beta1-to-v1beta2-golden.yaml"
@@ -171,5 +171,5 @@ func installMCO() {
 		}
 		testFailed = false
 		return nil
-	}).Should(Succeed())
+	}, EventuallyTimeoutMinute*5, EventuallyIntervalSecond*5).Should(Succeed())
 }

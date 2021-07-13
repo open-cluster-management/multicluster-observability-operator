@@ -36,13 +36,14 @@ test-e2e-setup:
 ifdef COMPONENT_IMAGE_PIPELINE
 	# override the image for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install -p $(COMPONENT_IMAGE_PIPELINE)
-endif
-ifdef COMPONENT_IMAGE_NAMES
+else
+  ifdef COMPONENT_IMAGE_NAMES
 	# override the image for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install -i $(COMPONENT_IMAGE_NAMES)
-else
+  else
 	# fall back to the latest snapshot image from quay.io for the e2e test
 	@./cicd-scripts/setup-e2e-tests.sh -a install
+  endif
 endif
 
 test-e2e-clean:

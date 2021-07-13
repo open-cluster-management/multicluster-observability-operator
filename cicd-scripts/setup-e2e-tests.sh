@@ -233,6 +233,14 @@ deploy_mco_operator() {
         fi
     done
 
+    cd ${ROOTDIR}
+    # create the two CRDs: clustermanagementaddons and managedclusteraddons
+    if [ -d "ocm-api" ]; then
+        rm -rf ocm-api
+    fi
+    git clone --depth 1 https://github.com/open-cluster-management/api.git ocm-api
+    kubectl apply -f ocm-api/addon/v1alpha1/
+
     kubectl create ns ${OCM_DEFAULT_NS} || true
     # Install the multicluster-observability-operator
 	kustomize build ${ROOTDIR}/operators/multiclusterobservability/config/default | kubectl apply -n ${OCM_DEFAULT_NS} -f -

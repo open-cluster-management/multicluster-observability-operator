@@ -48,7 +48,12 @@ deploy() {
   $sed_command "s~grafana-config$~grafana-dev-config~g" grafana-dev-deploy.yaml
   $sed_command "s~- multicluster-observability-grafana$~- multicluster-observability-grafana-dev~g" grafana-dev-deploy.yaml
 
-  POD_NAME=$(kubectl get pods -n "$obs_namespace"|grep observability-grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
+  POD_NAME=$(kubectl get pods -n "$obs_namespace" -l app=multicluster-observability-grafana |grep grafana|awk '{split($0, a, " "); print a[1]}' |head -n 1)
+  if [ -z "$POD_NAME" ]; then
+    echo "Failed to get grafana pod name"
+    exit 1
+  fi
+
   GROUP_ID=$(kubectl get pods "$POD_NAME" -n "$obs_namespace" -o jsonpath='{.spec.securityContext.fsGroup}')
   if [[ ${GROUP_ID} == "grafana" ]]; then
     GROUP_ID=472

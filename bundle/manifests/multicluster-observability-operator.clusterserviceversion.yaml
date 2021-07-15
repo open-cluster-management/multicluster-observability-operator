@@ -51,6 +51,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.4.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    operators.operatorframework.io/internal-objects: '["observatoria.core.observatorium.io","observabilityaddons.observability.open-cluster-management.io"]'
   name: multicluster-observability-operator.v0.1.0
   namespace: placeholder
 spec:

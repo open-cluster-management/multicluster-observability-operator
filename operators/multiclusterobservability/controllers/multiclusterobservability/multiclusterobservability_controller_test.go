@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	utilpointer "k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	migrationv1alpha1 "sigs.k8s.io/kube-storage-version-migrator/pkg/apis/migration/v1alpha1"
@@ -33,7 +32,7 @@ import (
 	mchv1 "github.com/open-cluster-management/multiclusterhub-operator/pkg/apis/operator/v1"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
+	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	mcoshared "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/shared"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -239,28 +238,6 @@ func createClusterVersion() *configv1.ClusterVersion {
 	}
 }
 
-func createPlacementRuleCRD() *apiextensionsv1beta1.CustomResourceDefinition {
-	return &apiextensionsv1beta1.CustomResourceDefinition{
-		ObjectMeta: metav1.ObjectMeta{Name: config.PlacementRuleCrdName},
-		Spec: apiextensionsv1beta1.CustomResourceDefinitionSpec{
-			Scope:                 apiextensionsv1beta1.NamespaceScoped,
-			Conversion:            &apiextensionsv1beta1.CustomResourceConversion{Strategy: apiextensionsv1beta1.NoneConverter},
-			PreserveUnknownFields: utilpointer.BoolPtr(false),
-			Group:                 "apps.open-cluster-management.io",
-			Names: apiextensionsv1beta1.CustomResourceDefinitionNames{
-				Kind:     "PlacementRule",
-				ListKind: "PlacementRuleList",
-				Plural:   "placementrules",
-				Singular: "placementrule",
-			},
-			Version: "v1",
-			Versions: []apiextensionsv1beta1.CustomResourceDefinitionVersion{
-				{Name: "v1", Storage: true, Served: true},
-			},
-		},
-	}
-}
-
 func createMultiClusterHubCRD() *apiextensionsv1beta1.CustomResourceDefinition {
 	return &apiextensionsv1beta1.CustomResourceDefinition{
 		ObjectMeta: metav1.ObjectMeta{Name: config.MCHCrdName},
@@ -329,7 +306,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
-	placementv1.AddToScheme(s)
+	clusterv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
 
@@ -349,7 +326,7 @@ func TestMultiClusterMonitoringCRUpdate(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.PlacementRuleCrdName: true}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{}}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -655,7 +632,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	mcov1beta2.SchemeBuilder.AddToScheme(s)
 	observatoriumv1alpha1.AddToScheme(s)
 	routev1.AddToScheme(s)
-	placementv1.AddToScheme(s)
+	clusterv1.AddToScheme(s)
 	addonv1alpha1.AddToScheme(s)
 	mchv1.SchemeBuilder.AddToScheme(s)
 	migrationv1alpha1.SchemeBuilder.AddToScheme(s)
@@ -678,7 +655,7 @@ func TestImageReplaceForMCO(t *testing.T) {
 	cl := fake.NewFakeClient(objs...)
 
 	// Create a ReconcileMemcached object with the scheme and fake client.
-	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.PlacementRuleCrdName: true, config.MCHCrdName: true}}
+	r := &MultiClusterObservabilityReconciler{Client: cl, Scheme: s, CRDMap: map[string]bool{config.MCHCrdName: true}}
 	config.SetMonitoringCRName(name)
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .

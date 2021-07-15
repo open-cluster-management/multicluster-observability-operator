@@ -105,9 +105,9 @@ setup_kubectl() {
     if ! command -v kubectl &> /dev/null; then
         echo "This script will install kubectl (https://kubernetes.io/docs/tasks/tools/install-kubectl/) on your machine"
         if [[ "$(uname)" == "Linux" ]]; then
-            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
         elif [[ "$(uname)" == "Darwin" ]]; then
-            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/darwin/amd64/kubectl
+            curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/darwin/amd64/kubectl
         fi
         chmod +x ./kubectl && mv ./kubectl ${ROOTDIR}/bin/kubectl
     fi
@@ -190,6 +190,7 @@ approve_csr_joinrequest() {
             for clustername in ${clusternames}; do
                 echo "approve joinrequest for ${clustername}"
                 kubectl patch managedcluster ${clustername} --patch '{"spec":{"hubAcceptsClient":true}}' --type=merge
+                kubectl label managedcluster ${clustername} vendor=OpenShift --overwrite
             done
             break
         fi
@@ -232,21 +233,6 @@ deploy_mco_operator() {
             ${SED_COMMAND} "/annotations.*/a \ \ \ \ mco-${component_anno_name}-image: ${img}" ${ROOTDIR}/examples/mco/e2e/v1beta2/observability.yaml
         fi
     done
-    cd ${ROOTDIR}
-    # create the two CRDs: clustermanagementaddons and managedclusteraddons
-    if [ -d "ocm-api" ]; then
-        rm -rf ocm-api
-    fi
-    git clone --depth 1 https://github.com/open-cluster-management/api.git ocm-api
-    kubectl apply -f ocm-api/addon/v1alpha1/
-
-    # create the CRDs: placementrules
-    if [ -d "multicloud-operators-placementrule" ]; then
-        rm -rf multicloud-operators-placementrule
-    fi
-    latest_release_branch=$(git ls-remote --heads https://github.com/open-cluster-management/multicloud-operators-placementrule.git release\* | tail -1 | cut -f 2 | cut -d '/' -f 3)
-    git clone --depth 1 -b ${latest_release_branch} https://github.com/open-cluster-management/multicloud-operators-placementrule.git
-    kubectl apply -f multicloud-operators-placementrule/deploy/crds/apps.open-cluster-management.io_placementrules_crd.yaml
 
     kubectl create ns ${OCM_DEFAULT_NS} || true
     # Install the multicluster-observability-operator
@@ -428,9 +414,8 @@ execute() {
 get_images() {
     if [[ ! -z "${1}" ]]; then
         IMAGES=""
-        changed_files=`cd $ROOTDIR; git --no-pager diff --name-only main...HEAD`
+        changed_files=`cd $ROOTDIR; git diff --name-only HEAD~1`
         for file in ${changed_files}; do
-            echo $file
             if [[ $file =~ ^proxy ]]; then
                 IMAGES+=" ${1}:rbac-query-proxy"
                 continue

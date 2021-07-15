@@ -241,7 +241,6 @@ const (
 const (
 	MCHCrdName                     = "multiclusterhubs.operator.open-cluster-management.io"
 	MCOCrdName                     = "multiclusterobservabilities.observability.open-cluster-management.io"
-	PlacementRuleCrdName           = "placementrules.apps.open-cluster-management.io"
 	StorageVersionMigrationCrdName = "storageversionmigrations.migration.k8s.io"
 )
 

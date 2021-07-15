@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	addonv1alpha1 "github.com/open-cluster-management/api/addon/v1alpha1"
+	clusterv1 "github.com/open-cluster-management/api/cluster/v1"
 	workv1 "github.com/open-cluster-management/api/work/v1"
-	placementv1 "github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1"
 	mcov1beta1 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta1"
 	mcov1beta2 "github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/api/v1beta2"
 	"github.com/open-cluster-management/multicluster-observability-operator/operators/multiclusterobservability/pkg/config"
@@ -52,6 +52,7 @@ var (
 	isCRoleCreated                  = false
 	isClusterManagementAddonCreated = false
 	isplacementControllerRunnning   = false
+	managedClusterList              = []string{}
 )
 
 // PlacementRuleReconciler reconciles a PlacementRule object
@@ -99,22 +100,6 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		} else {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err
-		}
-	}
-	placement := &placementv1.PlacementRule{}
-	if !deleteAll {
-		// Fetch the PlacementRule instance
-		err = r.Client.Get(context.TODO(), types.NamespacedName{
-			Name:      config.GetDefaultCRName(),
-			Namespace: config.GetDefaultNamespace(),
-		}, placement)
-		if err != nil {
-			if k8serrors.IsNotFound(err) {
-				deleteAll = true
-			} else {
-				// Error reading the object - requeue the request.
-				return ctrl.Result{}, err
-			}
 		}
 	}
 
@@ -165,7 +150,7 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	if !deleteAll {
-		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, placement, obsAddonList)
+		res, err := createAllRelatedRes(r.Client, r.RESTMapper, req, mco, obsAddonList)
 		if err != nil {
 			return res, err
 		}
@@ -245,20 +230,19 @@ func (r *PlacementRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 func createAllRelatedRes(
-	client client.Client,
+	c client.Client,
 	restMapper meta.RESTMapper,
 	request ctrl.Request,
 	mco *mcov1beta2.MultiClusterObservability,
-	placement *placementv1.PlacementRule,
 	obsAddonList *mcov1beta1.ObservabilityAddonList) (ctrl.Result, error) {
 
 	// create the clusterrole if not there
 	if !isCRoleCreated {
-		err := createClusterRole(client)
+		err := createClusterRole(c)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = createResourceRole(client)
+		err = createResourceRole(c)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -266,7 +250,7 @@ func createAllRelatedRes(
 	}
 	//Check if ClusterManagementAddon is created or create it
 	if !isClusterManagementAddonCreated {
-		err := util.CreateClusterManagementAddon(client)
+		err := util.CreateClusterManagementAddon(c)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -278,26 +262,26 @@ func createAllRelatedRes(
 		currentClusters = append(currentClusters, ep.Namespace)
 	}
 
-	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(client, mco)
+	works, crdWork, dep, hubInfo, err := getGlobalManifestResources(c, mco)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	failedCreateManagedClusterRes := false
-	for _, decision := range placement.Status.Decisions {
-		currentClusters = util.Remove(currentClusters, decision.ClusterNamespace)
+	for _, managedCluster := range managedClusterList {
+		currentClusters = util.Remove(currentClusters, managedCluster)
 		// only handle the request namespace if the request resource is not from observability  namespace
 		if request.Namespace == "" || request.Namespace == config.GetDefaultNamespace() ||
-			request.Namespace == decision.ClusterNamespace {
-			log.Info("Monitoring operator should be installed in cluster", "cluster_name", decision.ClusterName)
-			err = createManagedClusterRes(client, restMapper, mco,
-				decision.ClusterName, decision.ClusterNamespace,
+			request.Namespace == managedCluster {
+			log.Info("Monitoring operator should be installed in cluster", "cluster_name", managedCluster)
+			err = createManagedClusterRes(c, restMapper, mco,
+				managedCluster, managedCluster,
 				works, crdWork, dep, hubInfo)
 			if err != nil {
 				failedCreateManagedClusterRes = true
-				log.Error(err, "Failed to create managedcluster resources", "namespace", decision.ClusterNamespace)
+				log.Error(err, "Failed to create managedcluster resources", "namespace", managedCluster)
 			}
-			if request.Namespace == decision.ClusterNamespace {
+			if request.Namespace == managedCluster {
 				break
 			}
 		}
@@ -306,7 +290,7 @@ func createAllRelatedRes(
 	failedDeleteOba := false
 	for _, cluster := range currentClusters {
 		log.Info("To delete observabilityAddon", "namespace", cluster)
-		err = deleteObsAddon(client, cluster)
+		err = deleteObsAddon(c, cluster)
 		if err != nil {
 			failedDeleteOba = true
 			log.Error(err, "Failed to delete observabilityaddon", "namespace", cluster)
@@ -408,29 +392,35 @@ func deleteManagedClusterRes(c client.Client, namespace string) error {
 	return nil
 }
 
+func updateManagedClusterList(obj client.Object) {
+	vendor, ok := obj.GetLabels()["vendor"]
+	if !ok && vendor != "OpenShift" {
+		return
+	}
+	obs, ok := obj.GetLabels()["observability"]
+	if ok && obs == "disabled" {
+		return
+	}
+	managedClusterList = util.RemoveDuplicates(append(managedClusterList, obj.GetName()))
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	name := config.GetDefaultCRName()
-	pmPred := predicate.Funcs{
+	clusterPred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
-				return true
-			}
-			return false
+			updateManagedClusterList(e.Object)
+			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			if e.ObjectNew.GetName() == name &&
-				e.ObjectNew.GetNamespace() == watchNamespace &&
-				e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+			if e.ObjectNew.GetResourceVersion() != e.ObjectOld.GetResourceVersion() {
+				updateManagedClusterList(e.ObjectNew)
 				return true
 			}
 			return false
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			if e.Object.GetName() == name && e.Object.GetNamespace() == watchNamespace {
-				return e.DeleteStateUnknown
-			}
-			return false
+			updateManagedClusterList(e.Object)
+			return e.DeleteStateUnknown
 		},
 	}
 
@@ -618,8 +608,8 @@ func (r *PlacementRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	ctrBuilder := ctrl.NewControllerManagedBy(mgr).
-		// Watch for changes to primary resource PlacementRule with predicate
-		For(&placementv1.PlacementRule{}, builder.WithPredicates(pmPred)).
+		// Watch for changes to primary resource ManagedCluster with predicate
+		For(&clusterv1.ManagedCluster{}, builder.WithPredicates(clusterPred)).
 		// secondary watch for observabilityaddon
 		Watches(&source.Kind{Type: &mcov1beta1.ObservabilityAddon{}}, &handler.EnqueueRequestForObject{}, builder.WithPredicates(obsAddonPred)).
 		// secondary watch for MCO

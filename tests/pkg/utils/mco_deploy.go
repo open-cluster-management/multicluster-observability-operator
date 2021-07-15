@@ -4,14 +4,11 @@
 package utils
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -93,13 +90,6 @@ func NewMCOMObservatoriumGVR() schema.GroupVersionResource {
 		Group:    "core.observatorium.io",
 		Version:  "v1alpha1",
 		Resource: "observatoria"}
-}
-
-func NewOCMPlacementRuleGVR() schema.GroupVersionResource {
-	return schema.GroupVersionResource{
-		Group:    "apps.open-cluster-management.io",
-		Version:  "v1",
-		Resource: "placementrules"}
 }
 
 func NewOCMMultiClusterHubGVR() schema.GroupVersionResource {
@@ -448,61 +438,6 @@ func CheckDeploymentPodReady(opt TestOptions, deployName string) error {
 		err = fmt.Errorf("deployment %s should have %d but got %d ready replicas",
 			deployName, *deploy.Spec.Replicas,
 			deploy.Status.ReadyReplicas)
-		return err
-	}
-	return nil
-}
-
-// PatchPlacementRule patch the status of the placementrule created by MCO
-// TODO(morvencao): remove this function after placement is implemented by server foundation
-func PatchPlacementRule(opt TestOptions, token string) error {
-	if token == "" {
-		klog.Errorf("empty bearer token")
-		return fmt.Errorf("empty bearer token")
-	}
-	if opt.HubCluster.MasterURL == "" {
-		klog.Errorf("empty master URL")
-		return fmt.Errorf("empty master URL")
-	}
-
-	patchURL := opt.HubCluster.MasterURL + "/apis/apps.open-cluster-management.io/v1/namespaces/" + MCO_NAMESPACE + "/placementrules/observability/status"
-	patchJSON := []byte(`
-{
-  "status": {
-    "decisions": [
-      {
-        "clusterName": "cluster1",
-        "clusterNamespace": "cluster1"
-      }
-    ]
-  }
-}`)
-	req, err := http.NewRequest("PATCH", patchURL, bytes.NewBuffer(patchJSON))
-	if err != nil {
-		klog.Errorf("error to create http request : %v", err)
-		return err
-	}
-	// add bearer token to request header
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/merge-patch+json")
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-	// req.Host =
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		klog.Errorf("resp.StatusCode: %v\n", resp.StatusCode)
-		return fmt.Errorf("failed to patch placementrule")
-	}
-
-	result, err := ioutil.ReadAll(resp.Body)
-	klog.V(1).Infof("patch result: %s\n", result)
-	if err != nil {
 		return err
 	}
 	return nil

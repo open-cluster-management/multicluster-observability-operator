@@ -17,7 +17,6 @@ require (
 	github.com/onsi/gomega v1.13.0
 	github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2
 	github.com/open-cluster-management/api v0.0.0-20210513122330-d76f10481f05
-	github.com/open-cluster-management/multicloud-operators-placementrule v1.0.1-2020-05-28-18-29-00.0.20200603172904-efde26079087
 	github.com/open-cluster-management/multiclusterhub-operator v0.0.0-20210622185704-40982c42385e
 	github.com/open-cluster-management/observatorium-operator v0.0.0-20210630101922-5eab9bc11b82
 	github.com/openshift/api v3.9.1-0.20191111211345-a27ff30ebf09+incompatible

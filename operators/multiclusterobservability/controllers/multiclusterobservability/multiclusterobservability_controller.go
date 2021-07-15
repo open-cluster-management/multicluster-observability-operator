@@ -112,12 +112,8 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	StartStatusUpdate(r.Client, instance)
 
 	if os.Getenv("UNIT_TEST") != "true" {
-		pmCrdExists, _ := r.CRDMap[config.PlacementRuleCrdName]
-		if pmCrdExists {
-			// start placement controller
-			placemengctrl.StartPlacementController(r.Manager, r.CRDMap)
-		}
-
+		// start placement controller
+		placemengctrl.StartPlacementController(r.Manager, r.CRDMap)
 		// setup ocm addon manager
 		certctrl.Start(r.Client)
 	}
@@ -249,15 +245,6 @@ func (r *MultiClusterObservabilityReconciler) Reconcile(ctx context.Context, req
 	result, err = GenerateGrafanaDataSource(r.Client, r.Scheme, instance)
 	if result != nil {
 		return *result, err
-	}
-
-	pmCrdExists, _ := r.CRDMap[config.PlacementRuleCrdName]
-	if pmCrdExists {
-		// create the placementrule
-		err = createPlacementRule(r.Client, r.Scheme, instance)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
 	}
 
 	svmCrdExists, _ := r.CRDMap[config.StorageVersionMigrationCrdName]
